@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thai Flashcard Pro - Audio Edition</title>
+    <title>Thai Flashcard Pro - Phiên bản Âm thanh</title>
     <script> window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); }; </script> <script defer src="/_vercel/insights/script.js"></script> 
     <style>
         * { box-sizing: border-box; }
@@ -30,6 +30,7 @@
             justify-content: center;
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             transition: transform 0.2s;
+            cursor: pointer;
         }
         .char { font-size: 80px; color: #1a73e8; }
         .detail { font-size: 20px; margin-top: 15px; display: none; text-align: center; color: #555; }
@@ -54,11 +55,12 @@
         .good { background: #4CAF50; }
         .easy { background: #00c853; }
         .stats { margin-top: 15px; font-size: 14px; color: #666; }
+        .reset-btn { background: #607d8b; width: auto; padding: 10px 20px; font-size: 14px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-<h2>Thai Flashcard PRO</h2>
+<h2>Học Tiếng Thái PRO</h2>
 
 <div class="card" onclick="toggleAnswer()">
     <div class="char" id="char"></div>
@@ -71,24 +73,23 @@
         <button class="audio" onclick="playAudio()">🔊 Phát âm</button>
     </div>
     <div class="row">
-        <button class="again" onclick="rate(0)">No idea</button>
-        <button class="hard" onclick="rate(1)">Hard</button>
+        <button class="again" onclick="rate(0)">Chưa biết</button>
+        <button class="hard" onclick="rate(1)">Khó</button>
     </div>
     <div class="row">
-        <button class="good" onclick="rate(2)">Good</button>
-        <button class="easy" onclick="rate(3)">Easy</button>
+        <button class="good" onclick="rate(2)">Nhớ</button>
+        <button class="easy" onclick="rate(3)">Dễ</button>
     </div>
 </div>
 
 <div class="stats" id="stats"></div>
-<div style="margin-top: 20px;">
-    <button onclick="resetProgress()" style="background: #607d8b; width: auto; padding: 10px 20px; font-size: 14px;">
-        🔄 Xóa tiến độ & Học lại từ đầu
-    </button>
-</div>
+
+<button class="reset-btn" onclick="resetProgress()">
+    🔄 Xóa tiến độ & Học lại từ đầu
+</button>
+
 <script src="data.js"></script>
 <script>
-
 let deck = JSON.parse(localStorage.getItem('ankiDeckProV2')) || baseCards.map(c => ({...c, interval:1, due:Date.now(), seen:0, correct:0}));
 let current = null;
 let show = false;
@@ -101,8 +102,7 @@ function getNextCard() {
     const now = Date.now();
     let dueCards = deck.filter(c => c.due <= now);
     if (dueCards.length === 0) {
-        alert('Chúc mừng! Bạn đã hoàn thành bài học hôm nay.');
-        // Reset để học lại nếu muốn
+        alert('Chúc mừng! Bạn đã hoàn thành các thẻ cần học hôm nay.');
         deck.forEach(c => c.due = now);
         dueCards = deck;
     }
@@ -113,8 +113,12 @@ function getNextCard() {
 
 function render() {
     charEl.textContent = current.char;
-    detailEl.innerHTML = `${current.detail}<br><strong>${current.charType}</strong>`;
-    detailEl.style.display = show ? 'block':'none';
+    // Việt hóa loại chữ cái từ dữ liệu
+    let typeDisplay = current.charType;
+    if(typeDisplay === 'Nguyên âm') typeDisplay = 'Nguyên âm';
+    
+    detailEl.innerHTML = `${current.detail}<br><strong>${typeDisplay}</strong>`;
+    detailEl.style.display = show ? 'block' : 'none';
     updateStats();
 }
 
@@ -142,11 +146,9 @@ function rate(score) {
     }, 1000);
 }
 
-// HÀM PHÁT ÂM MỚI SỬ DỤNG PLAYLIST BASE64
 function playAudio() {
     if (!current || !current.id) {
-        console.log("Ký tự này chưa được thiết lập Audio ID");
-        // Fallback sang Google TTS nếu không có trong playlist
+        console.log("Ký tự này chưa có ID âm thanh");
         const utter = new SpeechSynthesisUtterance(current.char);
         utter.lang = 'th-TH';
         speechSynthesis.speak(utter);
@@ -157,7 +159,7 @@ function playAudio() {
     if (base64Data) {
         const audioSrc = `data:audio/mp3;base64,${base64Data}`;
         const audio = new Audio(audioSrc);
-        audio.play().catch(e => console.error("Lỗi phát nhạc:", e));
+        audio.play().catch(e => console.error("Lỗi phát âm thanh:", e));
     } else {
         console.warn("Không tìm thấy âm thanh cho ID:", current.id);
     }
@@ -167,18 +169,16 @@ function updateStats() {
     const total = deck.length;
     const learned = deck.filter(c => c.correct > 0).length;
     const accuracy = total === 0 ? 0 : Math.round(deck.reduce((acc,c)=>acc+(c.seen?c.correct/c.seen:0),0)/total*100);
-    statsEl.innerHTML = `Tiến độ: ${learned}/${total} | Chính xác: ${accuracy}%`;
+    statsEl.innerHTML = `Tiến độ: ${learned}/${total} | Độ chính xác: ${accuracy}%`;
 }
 
 function save() {
     localStorage.setItem('ankiDeckProV2', JSON.stringify(deck));
 }
+
 function resetProgress() {
     if (confirm("Bạn có chắc chắn muốn xóa toàn bộ tiến độ và học lại từ đầu không?")) {
-        // 1. Xóa trong Local Storage
         localStorage.removeItem('ankiDeckProV2');
-        
-        // 2. Khởi tạo lại biến deck từ mảng gốc baseCards
         deck = baseCards.map(c => ({
             ...c, 
             interval: 1, 
@@ -186,15 +186,12 @@ function resetProgress() {
             seen: 0, 
             correct: 0
         }));
-        
-        // 3. Lưu lại trạng thái mới và cập nhật giao diện
         save();
         getNextCard();
-        alert("Đã reset thành công!");
+        alert("Đã xóa tiến độ thành công!");
     }
 }
 
-// Khởi chạy
 getNextCard();
 </script>
 
