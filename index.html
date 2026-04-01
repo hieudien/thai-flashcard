@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Thai Flashcard Pro - Audio Edition</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f0f2f5;
+        }
+        h2 { margin: 10px 0 15px; color: #333; }
+        .card {
+            width: 100%;
+            max-width: 420px;
+            height: 35vh;
+            min-height: 200px;
+            background: #fff;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            transition: transform 0.2s;
+        }
+        .char { font-size: 80px; color: #1a73e8; }
+        .detail { font-size: 20px; margin-top: 15px; display: none; text-align: center; color: #555; }
+        .controls { width: 100%; max-width: 420px; margin-top: 20px; }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .row { display: flex; gap: 10px; }
+        .row button { flex: 1; }
+        .show { background: #1a73e8; }
+        .audio { background: #9c27b0; font-size: 20px; }
+        .again { background: #f44336; }
+        .hard { background: #ff9800; }
+        .good { background: #4CAF50; }
+        .easy { background: #00c853; }
+        .stats { margin-top: 15px; font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+
+<h2>Thai Flashcard PRO</h2>
+
+<div class="card" onclick="toggleAnswer()">
+    <div class="char" id="char"></div>
+    <div class="detail" id="detail"></div>
+</div>
+
+<div class="controls">
+    <div class="row">
+        <button class="show" onclick="toggleAnswer()">Hiện đáp án</button>
+        <button class="audio" onclick="playAudio()">🔊 Phát âm</button>
+    </div>
+    <div class="row">
+        <button class="again" onclick="rate(0)">No idea</button>
+        <button class="hard" onclick="rate(1)">Hard</button>
+    </div>
+    <div class="row">
+        <button class="good" onclick="rate(2)">Good</button>
+        <button class="easy" onclick="rate(3)">Easy</button>
+    </div>
+</div>
+
+<div class="stats" id="stats"></div>
+<div style="margin-top: 20px;">
+    <button onclick="resetProgress()" style="background: #607d8b; width: auto; padding: 10px 20px; font-size: 14px;">
+        🔄 Xóa tiến độ & Học lại từ đầu
+    </button>
+</div>
+<script src="data.js"></script>
+<script>
+
+let deck = JSON.parse(localStorage.getItem('ankiDeckProV2')) || baseCards.map(c => ({...c, interval:1, due:Date.now(), seen:0, correct:0}));
+let current = null;
+let show = false;
+
+const charEl = document.getElementById('char');
+const detailEl = document.getElementById('detail');
+const statsEl = document.getElementById('stats');
+
+function getNextCard() {
+    const now = Date.now();
+    let dueCards = deck.filter(c => c.due <= now);
+    if (dueCards.length === 0) {
+        alert('Chúc mừng! Bạn đã hoàn thành bài học hôm nay.');
+        // Reset để học lại nếu muốn
+        deck.forEach(c => c.due = now);
+        dueCards = deck;
+    }
+    current = dueCards[Math.floor(Math.random()*dueCards.length)];
+    show = false;
+    render();
+}
+
+function render() {
+    charEl.textContent = current.char;
+    detailEl.innerHTML = `${current.detail}<br><strong>${current.charType}</strong>`;
+    detailEl.style.display = show ? 'block':'none';
+    updateStats();
+}
+
+function toggleAnswer() {
+    show = !show;
+    render();
+}
+
+function rate(score) {
+    playAudio();
+    setTimeout(() => {
+        current.seen++;
+        if (score >= 2) current.correct++;
+    
+        if (score === 0) current.interval = 1;
+        else if (score === 1) current.interval *= 1.5;
+        else if (score === 2) current.interval *= 2;
+        else if (score === 3) current.interval *= 3;
+    
+        current.interval = Math.max(1, Math.round(current.interval));
+        current.due = Date.now() + current.interval * 86400000;
+    
+        save();
+        getNextCard();
+    }, 1000);
+}
+
+// HÀM PHÁT ÂM MỚI SỬ DỤNG PLAYLIST BASE64
+function playAudio() {
+    if (!current || !current.id) {
+        console.log("Ký tự này chưa được thiết lập Audio ID");
+        // Fallback sang Google TTS nếu không có trong playlist
+        const utter = new SpeechSynthesisUtterance(current.char);
+        utter.lang = 'th-TH';
+        speechSynthesis.speak(utter);
+        return;
+    }
+
+    const base64Data = playlist.get(current.id);
+    if (base64Data) {
+        const audioSrc = `data:audio/mp3;base64,${base64Data}`;
+        const audio = new Audio(audioSrc);
+        audio.play().catch(e => console.error("Lỗi phát nhạc:", e));
+    } else {
+        console.warn("Không tìm thấy âm thanh cho ID:", current.id);
+    }
+}
+
+function updateStats() {
+    const total = deck.length;
+    const learned = deck.filter(c => c.correct > 0).length;
+    const accuracy = total === 0 ? 0 : Math.round(deck.reduce((acc,c)=>acc+(c.seen?c.correct/c.seen:0),0)/total*100);
+    statsEl.innerHTML = `Tiến độ: ${learned}/${total} | Chính xác: ${accuracy}%`;
+}
+
+function save() {
+    localStorage.setItem('ankiDeckProV2', JSON.stringify(deck));
+}
+function resetProgress() {
+    if (confirm("Bạn có chắc chắn muốn xóa toàn bộ tiến độ và học lại từ đầu không?")) {
+        // 1. Xóa trong Local Storage
+        localStorage.removeItem('ankiDeckProV2');
+        
+        // 2. Khởi tạo lại biến deck từ mảng gốc baseCards
+        deck = baseCards.map(c => ({
+            ...c, 
+            interval: 1, 
+            due: Date.now(), 
+            seen: 0, 
+            correct: 0
+        }));
+        
+        // 3. Lưu lại trạng thái mới và cập nhật giao diện
+        save();
+        getNextCard();
+        alert("Đã reset thành công!");
+    }
+}
+
+// Khởi chạy
+getNextCard();
+</script>
+
+</body>
+</html>
