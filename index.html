@@ -87,17 +87,32 @@
 <button class="reset-btn" onclick="resetProgress()">
     🔄 Xóa tiến độ & Học lại từ đầu
 </button>
+<select id="studyMode" onchange="changeMode()">
+    <option value="all">Tất cả các chữ</option>
+    <option value="nguyenam">Chỉ nguyên âm</option>
+    <option value="phuam">Chỉ phụ âm</option>
+</select>
 
 <script src="data.js"></script>
 <script>
-let deck = JSON.parse(localStorage.getItem('ankiDeckProV2')) || baseCards.map(c => ({...c, interval:1, due:Date.now(), seen:0, correct:0}));
+let allChar = baseCards.map(c => ({...c, interval:1, due:Date.now(), seen:0, correct:0}));
+let deck = [...allChar]
 let current = null;
-let show = false;
+let show = false
 
 const charEl = document.getElementById('char');
 const detailEl = document.getElementById('detail');
 const statsEl = document.getElementById('stats');
 
+function changeMode() {    
+    const studyMode = document.getElementById('studyMode').value;
+    deck = allChar.filter(c => {
+        if (studyMode === 'nguyenam') return c.charType == 'Nguyên âm';
+        if (studyMode === 'phuam') return c.charType !== 'Nguyên âm';
+        else return true
+    })
+    getNextCard()
+}
 function getNextCard() {
     const now = Date.now();
     let dueCards = deck.filter(c => c.due <= now);
