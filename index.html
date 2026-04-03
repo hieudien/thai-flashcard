@@ -89,8 +89,15 @@
 </button>
 <select id="studyMode" onchange="changeMode()">
     <option value="all">Tất cả các chữ</option>
-    <option value="nguyenam">Chỉ nguyên âm</option>
-    <option value="phuam">Chỉ phụ âm</option>
+    <option value="nguyenam">Tất cả nguyên âm</option>
+    <option value="phuam">Tất cả phụ âm</option>
+    <option value="phuamtrung">Phụ âm trung</option>
+    <option value="phuamcao">Phụ âm cao</option>
+    <option value="phuamthap1">12 Phụ âm thấp (1)</option>
+    <option value="phuamthap2">12 Phụ âm thấp (2)</option>
+    <option value="nguyenamngan">Nguyên âm ngắn</option>
+    <option value="nguyenamdai">Nguyên âm dài</option>
+    <option value="nguyenamdacbiet">Nguyên âm đặc biệt</option>
 </select>
 
 <script src="data.js"></script>
@@ -105,13 +112,14 @@ const detailEl = document.getElementById('detail');
 const statsEl = document.getElementById('stats');
 
 function changeMode() {    
-    const studyMode = document.getElementById('studyMode').value;
-    deck = allChar.filter(c => {
-        if (studyMode === 'nguyenam') return c.charType == 'Nguyên âm';
-        if (studyMode === 'phuam') return c.charType !== 'Nguyên âm';
-        else return true
-    })
+    getCardByMode()
     getNextCard()
+}
+function getCardByMode() {
+    const studyMode = document.getElementById('studyMode').value;
+    deck = allChar.filter((c, index) => {
+       return studyMode == 'all' ? true : c.mode === studyMode
+    })
 }
 function getNextCard() {
     const now = Date.now();
@@ -202,7 +210,7 @@ function resetProgress() {
             correct: 0
         }));
         save();
-        getNextCard();
+        changeMode()
         alert("Đã xóa tiến độ thành công!");
     }
 }
