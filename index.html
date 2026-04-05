@@ -102,17 +102,18 @@
 
 <script src="data.js"></script>
 <script>
-let allChar = baseCards.map(c => ({...c, interval:1, due:Date.now(), seen:0, correct:0}));
-let deck = [...allChar]
 let current = null;
 let show = false
 
 const charEl = document.getElementById('char');
 const detailEl = document.getElementById('detail');
 const statsEl = document.getElementById('stats');
-
+function getALLChar() {
+    return baseCards.map(c => ({...c, interval:1, due:Date.now(), seen:0, correct:0}));
+}
+let allChar = getALLChar()
+let deck = allChar
 function changeMode() {    
-    getCardByMode()
     getNextCard()
 }
 function getCardByMode() {
@@ -122,6 +123,7 @@ function getCardByMode() {
     })
 }
 function getNextCard() {
+    getCardByMode()
     const now = Date.now();
     let dueCards = deck.filter(c => c.due <= now);
     if (dueCards.length === 0) {
@@ -136,11 +138,7 @@ function getNextCard() {
 
 function render() {
     charEl.textContent = current.char;
-    // Việt hóa loại chữ cái từ dữ liệu
-    let typeDisplay = current.charType;
-    if(typeDisplay === 'Nguyên âm') typeDisplay = 'Nguyên âm';
-    
-    detailEl.innerHTML = `${current.detail}<br><strong>${typeDisplay}</strong>`;
+    detailEl.innerHTML = `${current.detail}<br><strong>${current.charType}</strong>`;
     detailEl.style.display = show ? 'block' : 'none';
     updateStats();
 }
@@ -164,7 +162,6 @@ function rate(score) {
         current.interval = Math.max(1, Math.round(current.interval));
         current.due = Date.now() + current.interval * 86400000;
     
-        save();
         getNextCard();
     }, 1000);
 }
@@ -188,29 +185,19 @@ function playAudio() {
     }
 }
 
-function updateStats() {
+function updateStats() {    
     const total = deck.length;
     const learned = deck.filter(c => c.correct > 0).length;
     const accuracy = total === 0 ? 0 : Math.round(deck.reduce((acc,c)=>acc+(c.seen?c.correct/c.seen:0),0)/total*100);
     statsEl.innerHTML = `Tiến độ: ${learned}/${total} | Độ chính xác: ${accuracy}%`;
 }
 
-function save() {
-    localStorage.setItem('ankiDeckProV2', JSON.stringify(deck));
-}
 
 function resetProgress() {
     if (confirm("Bạn có chắc chắn muốn xóa toàn bộ tiến độ và học lại từ đầu không?")) {
-        localStorage.removeItem('ankiDeckProV2');
-        deck = baseCards.map(c => ({
-            ...c, 
-            interval: 1, 
-            due: Date.now(), 
-            seen: 0, 
-            correct: 0
-        }));
-        save();
-        changeMode()
+        allChar = getALLChar()
+        getNextCard()
+        updateStats()
         alert("Đã xóa tiến độ thành công!");
     }
 }
