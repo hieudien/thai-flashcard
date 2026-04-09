@@ -119,7 +119,7 @@ function changeMode() {
 function getCardByMode() {
     const studyMode = document.getElementById('studyMode').value;
     deck = allChar.filter((c, index) => {
-       return studyMode == 'all' ? true : c.mode === studyMode
+        return studyMode == 'all' ? true : c.mode.includes(studyMode)
     })
 }
 function getNextCard() {
